@@ -1,0 +1,73 @@
+# Sign Language Translation Project: Implementation & Survey Guide
+
+This document is designed to assist in writing survey papers and the final implementation paper for the Sign Language Translation Project. It covers the datasets, methodologies, architecture, and engineering decisions made during development.
+
+---
+
+## 1. Abstract / Introduction
+
+Sign language recognition (SLR) is traditionally approached as a video classification problem. However, direct translation from video to natural language (Sign Language Translation - SLT) is significantly more complex due to variations in signing speed, background noise, and the disjointed grammar of glosses (the text representation of signs) compared to spoken English. 
+
+This project proposes a robust, dual-architecture system:
+1.  **A Cloud-Assisted 3D-CNN Pipeline:** Utilizes a heavy Inception-I3D model for high-accuracy offline video processing, coupled with a Large Language Model (LLM) API (Gemini 2.5 Flash) for complex grammatical reconstruction.
+2.  **An Edge-Optimized Real-Time Pipeline:** Employs spatial keypoint extraction (MediaPipe) and a lightweight hybrid neural network to achieve low-latency, fully offline translation, utilizing a localized LLM (FLAN-T5-Small).
+
+---
+
+## 2. Datasets Used (For Survey Paper)
+
+The models in this project are built upon several key large-scale datasets:
+*   **WLASL (Word-Level American Sign Language):** Used in the offline pipeline. It is one of the largest video datasets for ASL recognition, containing thousands of distinct glosses.
+*   **BSL-1K:** A large-scale British Sign Language dataset. The offline model weights heavily leverage transfer learning from models pre-trained on BSL-1K and fine-tuned on WLASL (up to 2000 classes).
+*   **ASL Citizen:** A crowdsourced dataset used for the real-time pipeline. To ensure high accuracy and reduce false positives during live inference, the project specifically isolates the top **300 most distinct classes** from this dataset.
+
+---
+
+## 3. Methodology & Architecture (Implementation Details)
+
+### Pipeline A: The Offline Video System (High-Fidelity)
+*Target: Pre-recorded videos or recorded webcam clips.*
+
+1.  **Video Preprocessing:** The input video is divided into sliding windows (stride = 8, frames = 64). This temporal windowing captures the continuous motion of signs.
+2.  **Spatiotemporal Feature Extraction (I3D):** An Inception-I3D model processes each window. I3D expands 2D image classification architectures into 3D to capture both spatial and temporal dynamics simultaneously.
+3.  **Noise Reduction:** A stabilization algorithm filters the logits. A predicted gloss is only accepted if the model predicts it consistently across at least 3 consecutive overlapping windows (Confidence threshold > 0.45).
+
+### Pipeline B: The Live Inference System (Low-Latency Fallback)
+*Target: Real-time, offline webcam translation.*
+
+1.  **Keypoint Extraction (MediaPipe):** Instead of processing dense RGB pixels, this pipeline extracts sparse 3D coordinates. It captures 126 hand landmarks (21 per hand $\times$ 3D coordinates) and 99 pose landmarks, significantly reducing the dimensionality of the input data.
+2.  **Temporal Buffering:** Keypoints are appended to a rolling sequence buffer (length = 50 frames). Inference is performed every 3 frames to maintain high FPS.
+3.  **The "300-Class" Hybrid Model:** The buffered sequence of coordinates is passed into a custom Keras/TensorFlow model (`best_hybrid_300.keras`). 
+    *   *Evaluation Strategy:* Using `classification_report`, the classes were filtered to only include those with an **F1-Score $\ge$ 0.70**. This ensures the live model avoids "jitter" and only predicts signs it has high confidence in.
+4.  **Heuristic Gesture Control:** Built-in programmatic checks on the spatial coordinates allow the user to control the application without a mouse (e.g., Thumbs Up = Speak, Open Palm = Clear Buffer).
+
+---
+
+## 4. Language Reconstruction & Audio (Cloud vs. Offline Edge)
+
+A major contribution of this project is addressing the "gloss-to-sentence" problem. Sign language grammar is inherently disjointed compared to spoken English. To fix this, the project implements a hybrid Natural Language Processing (NLP) architecture capable of running entirely in the cloud or completely offline:
+
+### The Cloud API Approach (Gemini 2.5 Flash)
+*   **Usage:** Integrated into the Offline Video Pipeline (`offline_pipeline_app.py`).
+*   **How it Works:** The sequence of raw glosses (e.g., `NAME` $\rightarrow$ `ME` $\rightarrow$ `JOHN`) is sent to the Gemini API via a zero-shot prompt via HTTP requests. 
+*   **Advantage:** The LLM acts as an incredibly powerful neural machine translator, reordering, and conjugating the words into natural, complex English sentences (e.g., "My name is John."). It provides the highest grammatical fidelity but requires an active internet connection.
+
+### The Fully Offline Edge Approach (Local LLM)
+*   **Usage:** Integrated into the Live Real-Time Pipeline (`live_inference_gui.py`).
+*   **How it Works:** Instead of relying on a cloud API, this pipeline loads **Google's FLAN-T5-Small** (a Seq2Seq LLM) via HuggingFace Transformers directly into the machine's memory. It runs completely offline on the local CPU.
+*   **Advantage:** Guarantees 100% privacy, zero latency waiting for API responses, and ensures the application is robust enough to operate in environments with no internet access.
+
+### Text-to-Speech (TTS) Integration
+Regardless of whether the sentence was generated via the Gemini API or the offline FLAN-T5 model, both pipelines utilize **`pyttsx3`** for audio generation. `pyttsx3` is a completely offline Text-to-Speech engine that does not require an internet connection, fulfilling the project's goal of creating an accessible, end-to-end communication tool.
+
+---
+
+## 5. Software Engineering & UI Integration
+
+The project is packaged into two distinct Graphical User Interfaces (GUIs) built with `customtkinter`.
+
+*   **Asynchronous Processing:** Deep learning inference blocks the main execution thread. To prevent the UI from freezing, both pipelines heavily utilize Python's `threading` module. Video processing and LLM network requests are offloaded to daemon threads.
+
+## 6. Conclusion & Future Work (For Papers)
+
+The dual-pipeline architecture successfully addresses the dichotomy in Sign Language Translation: the trade-off between computational efficiency and vocabulary size. The 2000-class I3D model paired with the Gemini API proves that high-fidelity translation is possible given enough compute. Conversely, the 300-class keypoint model paired with a local offline LLM demonstrates that a highly constrained, F1-optimized approach can run efficiently and autonomously on edge devices.

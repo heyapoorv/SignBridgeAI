@@ -1,0 +1,564 @@
+================================================================================
+       PAPER SUMMARY, Q&A AND PROJECT SUPPORT GUIDE
+       BE Final Year Project: Sign Language Translation System
+       Prepared for: Project Review / Viva Preparation
+================================================================================
+
+SELECTED PAPERS:
+  [C1] Conference Paper 1 - WLASL Dataset (WACV 2020)
+  [C2] Conference Paper 2 - ASL Citizen (NeurIPS 2023)
+  [T1] Transaction Paper 1 - StepNet (ACM TOMM 2023)
+  [T2] Transaction Paper 2 - SignBERT+ (IEEE TPAMI 2023)
+
+================================================================================
+================================================================================
+
+[C1] CONFERENCE PAPER 1
+================================================================================
+TITLE   : Word-level Deep Sign Language Recognition from Video:
+          A New Large-scale Dataset and Methods Comparison
+AUTHORS : Dongxu Li, Cristian Rodriguez, Xin Yu, Hongdong Li
+VENUE   : WACV (Winter Conference on Applications of Computer Vision) 2020
+FILE    : 1910.11006v2.pdf
+YEAR    : 2020 (arXiv: October 2019)
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+This paper introduced WLASL (Word-Level American Sign Language), which at the
+time of release was the LARGEST publicly available video dataset for word-level
+American Sign Language recognition. Before WLASL, datasets were tiny (fewer
+than 100 word classes), making it impossible to train any real-world system.
+
+Key Contributions:
+  - WLASL Dataset: 2,000+ common ASL words/glosses, performed by 100+ signers,
+    recorded across diverse real-world backgrounds.
+  - Two Baseline Approaches Compared:
+      1. Holistic Appearance-Based (raw RGB video frames via 3D CNNs like I3D)
+      2. Pose-Based (2D skeleton/joint coordinates from body pose estimators)
+  - Pose-TGCN: A novel Pose-based Temporal Graph Convolution Network proposed
+    in this paper that models spatial-temporal dependencies across joint graphs.
+  - Benchmark: Evaluated on WLASL-100, WLASL-300, WLASL-1000, WLASL-2000
+    subsets, establishing the first large-scale SLR benchmark for ASL.
+
+Dataset Statistics:
+  - 21,083 video clips total
+  - 2,000 ASL gloss classes
+  - 119 different signers
+  - Real-world recording conditions (varied lighting, backgrounds, speeds)
+
+--------------------------------------------------------------------------------
+HOW IT SUPPORTS OUR PROJECT
+--------------------------------------------------------------------------------
+  1. DIRECT DATASET USE: Our offline I3D pipeline is trained on WLASL-2000
+     (all 2000 classes). This paper IS the source paper for our core dataset.
+
+  2. ARCHITECTURE VALIDATION: The paper benchmarks I3D on WLASL, which is
+     exactly the model we use in Pipeline A (the Cloud-Assisted Offline System).
+     This validates our choice of I3D for video-based sign recognition.
+
+  3. POSE vs APPEARANCE COMPARISON: The paper's comparison of pose-based vs
+     appearance-based approaches directly motivates our DUAL pipeline design:
+     - Pipeline A (I3D) = holistic appearance approach
+     - Pipeline B (MediaPipe keypoints) = pose-based approach
+     Our project essentially implements BOTH approaches the paper compared!
+
+  4. SLIDING WINDOW JUSTIFICATION: The paper discusses temporal windowing for
+     video processing, which we use (stride=8, frames=64 windows in Pipeline A).
+
+  5. SCALE JUSTIFICATION: Proves why 2000 classes are needed for real-world
+     coverage. Directly answers "why so many classes?"
+
+--------------------------------------------------------------------------------
+Q&A - QUESTIONS YOUR PROFESSOR MAY ASK
+--------------------------------------------------------------------------------
+Q1: Why did you choose WLASL as your dataset?
+A : WLASL is the largest publicly available benchmark for word-level ASL
+    recognition (Li et al., 2020). It contains 21,083 clips across 2,000
+    glosses by 119 signers in real-world conditions, making it the gold
+    standard for training large-vocabulary sign recognition models.
+
+Q2: What is I3D and why did you use it?
+A : I3D (Inflated 3D Convolutions) was benchmarked by the WLASL authors as
+    one of the best architectures for holistic video-based sign recognition.
+    It extends 2D image classification networks into 3D to capture both
+    spatial appearance AND temporal motion simultaneously. The WLASL paper
+    established I3D as the strong baseline for this task.
+
+Q3: What is the difference between holistic and pose-based approaches?
+A : Holistic approaches (like I3D) process raw RGB video pixels - they are
+    powerful but computationally heavy. Pose-based approaches extract skeleton
+    keypoints (like MediaPipe landmarks) - they are lighter and more
+    privacy-preserving but lose texture information. The WLASL paper compared
+    both; we implement BOTH in a dual-pipeline architecture.
+
+Q4: Why does WLASL matter compared to older datasets?
+A : Older datasets had <100 word classes. WLASL with 2000 classes is the
+    first step toward real-world vocabulary coverage, enabling practical
+    ASL recognition systems beyond toy demonstrations.
+
+Q5: What is Pose-TGCN proposed in this paper?
+A : It is a Temporal Graph Convolution Network that treats body joints as
+    graph nodes and models how they interact both spatially (which joints
+    relate to each other) and temporally (how joints move over time frames).
+    This inspired our hybrid model's temporal sequence processing approach.
+
+Q6: What were the benchmark accuracy results on WLASL?
+A : I3D achieved ~65% Top-1 accuracy on WLASL-100. Performance drops as
+    vocabulary grows (WLASL-2000 is significantly harder). This shows the
+    challenge and motivates our noise-reduction stabilization filter.
+
+================================================================================
+
+
+[C2] CONFERENCE PAPER 2
+================================================================================
+TITLE   : ASL Citizen: A Community-Sourced Dataset for Advancing
+          Isolated Sign Language Recognition
+AUTHORS : Aashaka Desai, Lauren Berger, Fyodor Minakov, et al.
+          (Microsoft Research, University of Washington, University of
+          Maryland, Boston University)
+VENUE   : NeurIPS 2023 - Datasets and Benchmarks Track
+FILE    : NeurIPS-2023-asl-citizen-...-Paper-Datasets_and_Benchmarks.pdf
+YEAR    : 2023
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+ASL Citizen is a large-scale, crowdsourced, CONSENT-DRIVEN American Sign
+Language dataset, designed with ethical considerations and community involvement
+at its core. It is one of the largest crowdsourced ISLR (Isolated Sign Language
+Recognition) datasets ever created.
+
+Key Contributions:
+  - ASL Citizen Dataset:
+      * 83,399 video clips
+      * 2,731 distinct ASL signs
+      * 52 everyday signers (not professional/lab signers)
+      * Recorded across 16 U.S. states via personal webcams
+  - New Task Framing: Proposes "Sign Language Dictionary Retrieval" -
+    a user queries a sign via webcam, and the system returns matching
+    dictionary entries. More realistic than pure classification.
+  - Ethical Dataset: Gathered with explicit IRB approval and informed consent.
+    Deaf researchers were active team members throughout. No scraped data.
+  - Diversity: Real-world lighting, backgrounds, camera angles, speeds -
+    unlike controlled lab-recorded datasets.
+  - Signer-Independent Evaluation: Test signers are ENTIRELY unseen during
+    training, mimicking real-world deployment where new users appear.
+  - Baseline Results: ~63% Top-1 accuracy, ~91% Recall@10 with appearance
+    and pose-based classifiers.
+
+--------------------------------------------------------------------------------
+HOW IT SUPPORTS OUR PROJECT
+--------------------------------------------------------------------------------
+  1. DIRECT DATASET USE: Our real-time Pipeline B (MediaPipe + Hybrid Model)
+     is trained on the ASL Citizen dataset. The 300 best classes in our
+     'best_hybrid_300.keras' model come from this dataset.
+
+  2. THE "300 CLASSES" DECISION: The ASL Citizen paper itself shows that
+     recognition accuracy drops as vocabulary grows. Our decision to filter
+     to the top 300 most distinct classes (F1 >= 0.70) is supported by
+     this paper's analysis of class difficulty and diversity.
+
+  3. SIGNER-INDEPENDENT CHALLENGE: The paper introduces the signer-independent
+     evaluation protocol. Our live model faces the exact same challenge:
+     it must work for ANY user who sits in front of the webcam. This paper
+     validates why this is a hard, important problem.
+
+  4. CROWDSOURCED DIVERSITY: ASL Citizen's diverse recording conditions
+     (home webcams, 16 states) directly mirrors our use case. Users will
+     sign in front of home/office webcams - not in controlled labs. This
+     justifies our dataset choice over lab-controlled alternatives.
+
+  5. ETHICAL AI: The consent-driven nature of ASL Citizen aligns with
+     responsible AI principles. Professors may ask about ethics - this paper
+     gives you a strong answer.
+
+  6. COMMUNITY SOURCED = REAL WORLD: Lab-recorded datasets have professional
+     signers with perfect form. ASL Citizen's everyday signers make the model
+     robust to real user variability - exactly what our live system needs.
+
+--------------------------------------------------------------------------------
+Q&A - QUESTIONS YOUR PROFESSOR MAY ASK
+--------------------------------------------------------------------------------
+Q1: Why did you choose ASL Citizen for the real-time pipeline?
+A : ASL Citizen (Desai et al., NeurIPS 2023) is one of the largest
+    crowdsourced ISLR datasets with 83,399 clips from 52 everyday signers
+    across real-world webcam conditions. Unlike lab datasets, it reflects
+    how actual users will sign in front of their own cameras, making it
+    ideal for our live inference system.
+
+Q2: Why only 300 classes in the real-time model, not all 2,731?
+A : The ASL Citizen paper itself demonstrates that recognition accuracy
+    degrades with vocabulary size under signer-independent conditions. We
+    applied an F1-Score filter (F1 >= 0.70 per class) to select only the 300
+    most distinctly recognizable classes. This reduces false positives and
+    "jitter" in live inference, ensuring the system only predicts what it's
+    confident about.
+
+Q3: What makes ASL Citizen different from WLASL?
+A : WLASL was professionally scraped from the internet (YouTube, etc.) with
+    controlled recording conditions. ASL Citizen is community-sourced with
+    explicit consent, recorded on personal webcams by everyday signers.
+    ASL Citizen better represents real users, while WLASL's scale (2000 classes)
+    is better for offline high-vocabulary systems.
+
+Q4: How does your system handle new users (signer independence)?
+A : This is a core challenge highlighted by ASL Citizen paper's
+    signer-independent evaluation protocol. Our Pipeline B addresses this
+    through: (1) training on 52 diverse signers, (2) MediaPipe keypoint
+    normalization which makes the input signer-agnostic, and (3) restricting
+    to 300 high-F1 classes for robust inference.
+
+Q5: What are the ethical considerations of your dataset?
+A : We used ASL Citizen which is fully IRB-approved, consent-driven, and
+    developed WITH Deaf community researchers. This ensures our system is
+    built responsibly and the training data respects signers' rights.
+
+Q6: What is the "dictionary retrieval" task proposed in this paper?
+A : Instead of pure classification, it frames recognition as retrieval:
+    given a signed query, return the top-K matching dictionary entries.
+    This is more practical since users may not sign perfectly - returning
+    ranked candidates is more forgiving. Our system can be extended to
+    support this in future work.
+
+================================================================================
+
+
+[T1] TRANSACTION PAPER 1
+================================================================================
+TITLE   : StepNet: Spatial-temporal Part-aware Network for
+          Isolated Sign Language Recognition
+AUTHORS : Xiaolong Shen, Zhedong Zheng, Yi Yang
+VENUE   : ACM Transactions on Multimedia Computing, Communications,
+          and Applications (ACM TOMM) - 2023
+FILE    : 2212.12857v2.pdf
+YEAR    : 2023 (arXiv: December 2022, Published in ACM TOMM 2023)
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+StepNet addresses a key limitation in sign language recognition: standard
+video recognition models treat all body regions equally, but signs are
+defined by fine-grained movements in SPECIFIC body parts (mainly hands and
+face). StepNet explicitly models which parts matter and when.
+
+Key Contributions:
+  - Part-Aware Feature Extraction: Identifies and separately encodes
+    discriminative body parts (hands, face, arms) rather than processing
+    the whole frame uniformly.
+  - Spatial-Temporal Modeling: Models BOTH where (spatial part location)
+    AND when (temporal progression) discriminative cues occur across frames.
+  - Part Attention Mechanism: A learnable attention module that assigns
+    higher weights to informative regions at each timestep.
+  - Evaluated on: WLASL-2000, NMFs-CSL, and SLR500 benchmarks.
+  - Strong Results: Outperforms prior state-of-the-art on WLASL with
+    significantly better handling of fine-grained hand/finger movements.
+
+Core Architecture:
+  Input Video -> Part Detection -> Spatial Feature Extraction per Part
+  -> Temporal Sequence Modeling -> Part Attention Fusion -> Classification
+
+--------------------------------------------------------------------------------
+HOW IT SUPPORTS OUR PROJECT
+--------------------------------------------------------------------------------
+  1. THEORETICAL GROUNDING FOR HYBRID MODEL: Our 'best_hybrid_300.keras'
+     is a hybrid architecture that processes MediaPipe landmarks (which are
+     inherently PART-BASED - 21 hand landmarks per hand + pose landmarks).
+     StepNet provides the academic justification that part-aware approaches
+     outperform whole-frame approaches for SLR.
+
+  2. WHY MEDIAPIPE (PART-BASED) WORKS: StepNet proves that focusing on
+     specific body parts (hands especially) is the right approach. MediaPipe
+     extracts exactly this - 126 hand landmarks + 99 pose landmarks. Our
+     keypoint selection directly reflects StepNet's insights.
+
+  3. SPATIAL + TEMPORAL MODELING: Our hybrid model processes a rolling
+     window of 50 frames of keypoint sequences - this is spatial (3D
+     coordinates of landmarks) + temporal (sequence over frames) modeling,
+     exactly what StepNet advocates.
+
+  4. SAME BENCHMARK: StepNet is evaluated on WLASL-2000, the same dataset
+     our offline pipeline uses. This creates a direct comparison point.
+
+  5. PART ATTENTION = OUR HEURISTIC GESTURES: StepNet's part attention
+     (knowing which parts matter when) is mirrored in our heuristic gesture
+     controls - e.g., we specifically monitor thumb tip coordinates for
+     "Thumbs Up" gesture and palm coordinates for "Open Palm", showing
+     spatial part awareness in our design.
+
+  6. TRANSACTION PAPER CREDIBILITY: ACM TOMM is a Q1 journal in multimedia
+     computing. Publishing in a transaction journal requires extensive
+     experiments, ablation studies, and reproducibility - it signals
+     thorough, rigorous research to your evaluation committee.
+
+--------------------------------------------------------------------------------
+Q&A - QUESTIONS YOUR PROFESSOR MAY ASK
+--------------------------------------------------------------------------------
+Q1: What is the core idea behind StepNet and why is it relevant?
+A : StepNet (Shen et al., ACM TOMM 2023) argues that sign recognition
+    depends on fine-grained movements of specific body parts, not the
+    whole frame. It proposes a spatial-temporal part-aware network that
+    explicitly focuses on hands and face. This directly motivates our
+    choice of MediaPipe for part-level keypoint extraction rather than
+    processing raw video pixels in the real-time pipeline.
+
+Q2: How does your hybrid model relate to StepNet's architecture?
+A : StepNet uses: (1) part detection, (2) per-part spatial feature
+    extraction, and (3) temporal sequence modeling. Our hybrid model
+    equivalently uses: (1) MediaPipe for part landmark detection,
+    (2) 3D coordinate extraction per landmark (spatial), and (3) a
+    sequential neural network on 50-frame rolling windows (temporal).
+    Our architecture is a lightweight edge-deployable version of StepNet's
+    core principles.
+
+Q3: Why is part-aware modeling important for sign language?
+A : Signs differ in subtle ways - two signs may look identical except for
+    a finger position or hand orientation. Whole-frame processing "dilutes"
+    these fine-grained differences with irrelevant background information.
+    Part-aware processing, as proven by StepNet, allows the model to
+    focus computation on what actually distinguishes one sign from another.
+
+Q4: What datasets did StepNet use and how do you compare?
+A : StepNet was evaluated on WLASL-2000 (among others). Our offline pipeline
+    also uses WLASL-2000. StepNet represents the academic state-of-the-art
+    for this benchmark, and our system builds on its findings.
+
+Q5: What is ACM TOMM and why does it matter?
+A : ACM Transactions on Multimedia Computing, Communications, and
+    Applications is a peer-reviewed Q1 journal published by the Association
+    for Computing Machinery (ACM). Transaction papers require much more
+    extensive validation than conference papers, meaning StepNet's claims
+    are thoroughly tested and reproducible.
+
+Q6: How does StepNet's temporal modeling compare to your approach?
+A : StepNet uses temporal convolutions and attention over video frames.
+    Our Pipeline B uses a rolling buffer of 50 keypoint frames fed into
+    a hybrid neural network. Both model the TEMPORAL PROGRESSION of signs
+    (how joints move over time), which is essential since signs are dynamic
+    gestures, not static poses.
+
+================================================================================
+
+
+[T2] TRANSACTION PAPER 2
+================================================================================
+TITLE   : SignBERT+: Hand-Model-Aware Self-Supervised Pre-Training
+          for Sign Language Understanding
+AUTHORS : Hezhen Hu, Weichao Zhao, Wengang Zhou, Yunyao Wang,
+          Houqiang Li
+VENUE   : IEEE Transactions on Pattern Analysis and Machine Intelligence
+          (IEEE TPAMI) - 2023
+FILE    : SignBERT_Hand-Model-Aware_Self-Supervised_Pre-Training_for_
+          Sign_Language_Understanding.pdf
+YEAR    : 2023
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+SignBERT+ is a self-supervised pre-training framework specifically designed
+for sign language understanding using hand pose representations (keypoints/
+landmarks). It adapts the BERT-style masked self-supervised learning paradigm
+to the domain of sign language hand models.
+
+Key Contributions:
+  - Hand-Model-Aware Pre-Training: Instead of pre-training on raw pixels,
+    SignBERT+ pre-trains on 3D HAND POSE MODELS (skeleton/keypoint sequences),
+    making it directly applicable to landmark-based recognition systems.
+  - BERT-Style Masking: During pre-training, random hand joints are MASKED
+    and the model learns to reconstruct them from context - teaching it
+    the natural spatial relationships between finger joints.
+  - Self-Supervised: Does NOT require labeled sign data for pre-training.
+    Can leverage any hand video (even non-sign language videos) to learn
+    general hand motion representations.
+  - Multi-Task Understanding: Handles Isolated SLR, Continuous SLR, and
+    Sign Language Production (generation) within a unified framework.
+  - Hand Context Module (HCM): Models fine-grained interactions between
+    finger joints, palm, and wrist - the most critical articulators in
+    sign language.
+  - Outperforms state-of-the-art on: MSASL, WLASL, SLR500, and Phoenix-2014.
+
+Pre-Training Process:
+  Unlabeled Hand Videos -> Extract 3D Hand Landmarks -> Randomly Mask Joints
+  -> Transformer Encoder -> Reconstruct Masked Joints -> Learn Hand Priors
+
+Fine-Tuning Process:
+  Pre-trained Weights -> Sign Language Videos (Labeled) -> Task-Specific Head
+  -> Classification / Translation Output
+
+--------------------------------------------------------------------------------
+HOW IT SUPPORTS OUR PROJECT
+--------------------------------------------------------------------------------
+  1. DIRECT ALIGNMENT WITH PIPELINE B: Our real-time pipeline extracts
+     exactly what SignBERT+ operates on - 3D hand landmark coordinates
+     from MediaPipe (21 landmarks per hand = 63 values, times 2 hands =
+     126 values). SignBERT+ proves this is the RIGHT representation space.
+
+  2. JUSTIFIES KEYPOINT-BASED APPROACH OVER PIXEL-BASED: SignBERT+ shows
+     that hand pose representations alone (WITHOUT RGB pixels) are powerful
+     enough for high-accuracy sign recognition. This validates our Pipeline B
+     design decision to use keypoints rather than raw video in real-time.
+
+  3. LIMITED DATA JUSTIFICATION: Our ASL Citizen 300-class model trains on
+     a relatively small labeled set. SignBERT+'s self-supervised approach
+     shows that hand pose models can be pre-trained without labels, then
+     fine-tuned - justifying why our approach works even with limited
+     labeled data per class.
+
+  4. UNDERSTANDING HAND JOINT RELATIONSHIPS: SignBERT+'s Hand Context Module
+     (HCM) models interactions between finger joints. Our MediaPipe extraction
+     captures 21 landmarks per hand - the same joint structure. This validates
+     that joint-level coordinate features are semantically rich.
+
+  5. FEATURE DIMENSIONALITY MATCH: SignBERT+ uses 63-dim hand vectors (21
+     joints x 3D). Our pipeline uses 126 (two hands x 63) + 99 pose = 225
+     total features per frame. We extend SignBERT+'s hand-only framework
+     with full body context.
+
+  6. HIGHEST JOURNAL PRESTIGE: IEEE TPAMI (Impact Factor ~23.6) is THE most
+     prestigious journal in computer vision. Having a TPAMI paper as a
+     reference immediately elevates the academic credibility of your project
+     in the eyes of any professor or reviewer.
+
+  7. BERT PARADIGM RELEVANCE: Our gloss-to-sentence step uses LLMs
+     (Gemini API / FLAN-T5). BERT is the foundation of all modern LLMs.
+     SignBERT+ bridges BERT-style pre-training with sign language, showing
+     that the NLP pre-training paradigm is applicable end-to-end in your
+     system (from keypoints to sentences).
+
+--------------------------------------------------------------------------------
+Q&A - QUESTIONS YOUR PROFESSOR MAY ASK
+--------------------------------------------------------------------------------
+Q1: What is SignBERT+ and why is it relevant to your project?
+A : SignBERT+ (Hu et al., IEEE TPAMI 2023) is a self-supervised pre-training
+    framework for sign language recognition using 3D hand pose representations
+    (keypoints). It proves that hand landmark sequences are a powerful and
+    sufficient representation for sign understanding - directly validating
+    our MediaPipe-based real-time pipeline which uses the same 3D hand
+    landmark coordinates (21 per hand).
+
+Q2: What is self-supervised pre-training and why does it matter?
+A : Self-supervised learning (SSL) allows a model to learn from UNLABELED
+    data by defining pretext tasks (like reconstructing masked joints).
+    SignBERT+ uses this to learn general hand motion priors without needing
+    thousands of labeled sign videos. This is crucial for our project because
+    sign language datasets are inherently limited in size - SSL allows
+    learning rich representations from even limited labeled data.
+
+Q3: How does SignBERT+ use BERT-style masking for hand poses?
+A : Just as BERT masks words in a sentence and predicts them from context,
+    SignBERT+ masks random hand joints (e.g., middle finger tip) and trains
+    the model to reconstruct them from surrounding joints and temporal context.
+    This forces the model to learn the natural biomechanical constraints of
+    hands - e.g., if the middle finger is bent, the ring finger is likely
+    nearby. These priors help downstream sign recognition enormously.
+
+Q4: What is the IEEE TPAMI and why is it important?
+A : IEEE Transactions on Pattern Analysis and Machine Intelligence is the
+    flagship journal of the IEEE Computer Society and the most prestigious
+    publication venue in computer vision and pattern recognition (Impact
+    Factor ~23.6). Papers published here have undergone extremely rigorous
+    peer review. Citing TPAMI work immediately establishes the scientific
+    credibility of your approach.
+
+Q5: How does your project extend SignBERT+'s approach?
+A : SignBERT+ focuses on hand-only representations. Our Pipeline B extends
+    this with: (1) full body pose (99 additional MediaPipe landmarks),
+    (2) a rolling temporal buffer of 50 frames for real-time inference,
+    (3) heuristic spatial gesture controls (using coordinate thresholds),
+    and (4) integration with an offline LLM (FLAN-T5) for gloss-to-sentence
+    conversion. We take SignBERT+'s validated representation and build a
+    complete end-to-end translation system around it.
+
+Q6: Why 3D coordinates and not just 2D hand images?
+A : SignBERT+ demonstrates that 3D pose representations (x, y, z per joint)
+    provide crucial depth information - e.g., whether a palm faces the camera
+    or faces away changes meaning in many signs. Raw 2D images lose this
+    depth cue. MediaPipe's 3D landmarks (which we use) preserve this depth
+    information, aligning with SignBERT+'s finding that 3D representation
+    is superior for sign language understanding.
+
+Q7: What tasks does SignBERT+ handle beyond recognition?
+A : SignBERT+ handles Isolated SLR, Continuous SLR, AND Sign Language
+    Production. Our project similarly addresses recognition (both pipelines)
+    plus natural language generation (via Gemini API / FLAN-T5). This
+    parallel scope supports our broader project vision.
+
+================================================================================
+
+
+HOW ALL 4 PAPERS TOGETHER JUSTIFY THE ENTIRE PROJECT
+================================================================================
+
+QUESTION: "Why did you build this project? What gap does it fill?"
+-----------------------------------------------------------------
+WLASL (C1): Despite 70M+ deaf people worldwide, no large-scale ASL recognition
+dataset existed before 2020. Sign language recognition was stuck at toy-level
+(<100 words). WLASL enabled the first real-vocabulary ASL recognition research.
+
+ASL Citizen (C2): Even after WLASL, datasets were not diverse enough to work
+for real users in real conditions. Lab-recorded, non-consented data could not
+generalize. ASL Citizen bridged this gap with community-sourced, ethical data.
+
+StepNet (T1): Recognition architectures treated all video regions equally,
+missing the fine-grained hand/finger movements that define signs. Part-aware
+spatial-temporal modeling was needed.
+
+SignBERT+ (T2): Pre-training and representation learning was entirely in
+the pixel domain (RGB frames). Hand pose as a representation space for
+self-supervised learning was unexplored - leaving a gap for lightweight,
+privacy-preserving, edge-deployable recognition systems.
+
+OUR CONTRIBUTION: We synthesize all of the above into a complete DUAL-PIPELINE
+SYSTEM: (1) a high-fidelity cloud pipeline using I3D on WLASL-2000 + Gemini
+API for sentence construction, and (2) a privacy-first edge pipeline using
+MediaPipe keypoints on ASL Citizen-300 + offline FLAN-T5. Both gaps identified
+by these 4 papers are addressed in our implementation.
+
+--------------------------------------------------------------------------------
+QUESTION: "What progress has been made till now?"
+-----------------------------------------------------------------
+  [DONE] Pipeline A: I3D-based offline video processing (WLASL-2000)
+         -> Sliding window inference (stride=8, frames=64)
+         -> Noise-reduction stabilization filter (3 consecutive windows)
+         -> Gemini 2.5 Flash API for gloss-to-sentence conversion
+         -> pyttsx3 TTS integration
+         -> Full GUI in customtkinter (offline_pipeline_app.py)
+
+  [DONE] Pipeline B: Real-time MediaPipe keypoint inference (ASL Citizen-300)
+         -> MediaPipe Holistic: 126 hand + 99 pose landmarks = 225 features
+         -> Rolling 50-frame buffer with inference every 3 frames
+         -> best_hybrid_300.keras (F1 >= 0.70 class filtering)
+         -> Heuristic gesture controls (Thumbs Up = Speak, Palm = Clear)
+         -> Offline FLAN-T5-Small LLM for gloss-to-sentence
+         -> Full GUI in customtkinter (live_inference_gui.py)
+
+  [DONE] Dual Architecture: Both pipelines packaged with separate GUIs
+  [DONE] Threading: Async processing to prevent UI freeze
+  [DONE] TTS: pyttsx3 fully offline speech output on both pipelines
+
+--------------------------------------------------------------------------------
+QUESTION: "What is unique / novel about your project?"
+-----------------------------------------------------------------
+  1. DUAL-PIPELINE ARCHITECTURE: No existing work combines a cloud-assisted
+     high-accuracy pipeline (I3D + LLM API) with a fully offline edge pipeline
+     (keypoints + local LLM) in a single deployable application.
+
+  2. GLOSS-TO-SENTENCE VIA LLM: Most SLR systems stop at gloss prediction.
+     We integrate LLMs (Gemini API / FLAN-T5) to convert raw glosses into
+     grammatically correct English sentences - addressing the "gloss problem".
+
+  3. F1-BASED CLASS SELECTION: Instead of training on all ASL Citizen classes,
+     we scientifically filter to 300 high-F1 classes, reducing live inference
+     jitter. This is a practical engineering contribution not seen in most
+     academic systems.
+
+  4. FULLY OFFLINE OPTION: Pipeline B requires zero internet connectivity,
+     making it viable in remote areas, hospitals, or privacy-sensitive contexts.
+
+  5. HEURISTIC GESTURE CONTROLS: Programmatic spatial coordinate checks enable
+     hands-free application control - a direct accessibility feature.
+
+================================================================================
+END OF DOCUMENT
+================================================================================
